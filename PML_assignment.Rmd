@@ -238,23 +238,17 @@ out_of_sample_error$accu <- round(out_of_sample_error$accu,2)
 out_of_sample_error[with(out_of_sample_error, order(-accu)),]
 best_accu <- max(out_of_sample_error$accu)
 ```
+# Out of sample error
+Below we can see the out of sample error comparisons amongst the 4 models fitted. 
+
+```{r}
+out_of_sample_error$accu <- round(out_of_sample_error$accu,2)
+out_of_sample_error[with(out_of_sample_error, order(-accu)),]
+best_accu <- max(out_of_sample_error$accu)
+```
 
 # Conclusion
 
 We built 4 models using two main prediction algorithms (boosting and randomForest). Each algorithm was applied on a different set of predictors, ones which we selected based upon our thorough exploration, while the others through using Principle Component Analysis. We then compared our out of sample errors in the tables shown above, and found a sample error rate for our Random Forest and hand picked predictors to be `r best_accu `. 
 
-
-```{r submit answers, echo=FALSE, eval=FALSE}
-pml_write_files = function(x){
-  n = length(x)
-  for(i in 1:n){
-    filename = paste0("problem_id_",i,".txt")
-    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
-  }
-}
-
-myanswers <- predict(model_rf,newdata = final_test_pb)
-pml_write_files(myanswers)
-
-```
 
