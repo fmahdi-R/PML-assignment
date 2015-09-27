@@ -1,0 +1,260 @@
+---
+title: "PML_Assignment"
+author: "Faisal Mahdi"
+date: "September 25, 2015"
+output: html_document
+---
+
+# Synopsis
+In this assignment we aimed to fit a predictive model onto a sample set of data (train it) which was captured by 'Groupware@LES'. That data and associated information can be found [here] (http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises). We used the {caret} package to build our models as well as preprocess and cross-validate them. 
+
+After splitting our data into two sets (train and test), we were able to select a good model for predicting the class of activity performed. With an out of sample error rate of `r best_accu`. 
+
+## General Strategy
+
+Our general strategy was a list of steps:
+
+- In the first section (code not show) we load our data, clean it a little and get acquainted with it too. 
+- In the second section we do some data cleansing, we remove some unnecessary columns, as well as clean all NAs. (We do not use imputing)
+- In the third and fourth (code not shown)sections we do a lot of exploratory analysis, only a few graphs are shown. In some cases we can clearly see a distinction when it comes to the type of activity performed. That is shown by the distinct colors. 
+- In the fifth section, we conduct our data processing - more details below. 
+- In the final section, we perform a few model fits and evaluation. Then based on that we decide which one to choose. 
+
+
+```{r data loading, echo=FALSE, cache=TRUE}
+library(caret)
+
+# Downlaod data and read into Data frames
+
+setwd("~/coursera/DS08_Machine_Learning/data")
+train_file <- "pml-training.csv"
+test_file <- "pml-testing.csv"
+
+# Download if haven't already done so 
+if (!train_file %in% dir()) {
+    download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",train_file,method = "curl")
+    mytraindf <- read.csv(train_file)
+    }
+if (!test_file %in% dir()) {
+    download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv",test_file,method = "curl")
+    mytestdf <- read.csv(test_file)
+    }
+
+# Load our CSV file if it is not already loaded during this session
+if (!"mytraindf" %in% ls()) {
+    mytraindf <- read.csv(train_file)
+}
+if (!"mytestdf" %in% ls()) {
+    mytestdf <- read.csv(test_file)
+}
+
+
+# temp_data <- read.csv(file = "./temp.csv")
+
+# head(mytraindf)
+# str(mytraindf)
+```
+## Data cleansing
+
+Now that the data is downloaded from our source links and loaded into data frames, we do a little cleansing.  
+
+```{r data cleansing, echo=TRUE, cache=TRUE}
+
+# Clean training DF by excluding new_window == yes rows then clean all NA columns
+mytraindf <- mytraindf[mytraindf$new_window == "no",]
+temp_data <- temp_data[temp_data$new_window == "no",]
+temp_data <- cbind(data.frame(X = seq(1:nrow(temp_data))),temp_data)
+
+# Now match the training columns to the test columns
+mytraindf <- mytraindf[,colSums(is.na(mytestdf)) != nrow(mytestdf)]
+temp_data <- temp_data[,colSums(is.na(mytestdf)) != nrow(mytestdf)]
+# Now Clean NA columns in mytestdf
+mytestdf <- mytestdf[,colSums(is.na(mytestdf)) != nrow(mytestdf) ]
+
+# Break the predictors down to each device reading
+names_forearm <- names(mytraindf[,c(which(grepl("forearm",names(mytraindf))),60)])
+names_arm <- names(mytraindf[,c(which(grepl("_arm",names(mytraindf))),60)])
+names_belt <- names(mytraindf[,c(which(grepl("_belt",names(mytraindf))),60)])
+names_dumbbell <- names(mytraindf[,c(which(grepl("dumbbell",names(mytraindf))),60)])
+```
+### Data exploration 
+
+We drew many plots, playing around with many possibilites of both the predictors as well as filtering per user, or even per class. However, we only chose a few examples for display. Ones where clustering of a certain colour can be more visible. 
+
+
+```{r data_exploration plot1, echo = FALSE, eval=TRUE, cache=TRUE}
+library(plot3D)
+
+### My user section 
+# subset by user 
+only_a <- subset(mytraindf,mytraindf$user_name == "adelmo")
+only_b <- subset(mytraindf,mytraindf$user_name == "carlitos")
+only_c <- subset(mytraindf,mytraindf$user_name == "charles")
+only_d <- subset(mytraindf,mytraindf$user_name == "jeremy")
+only_e <- subset(mytraindf,mytraindf$user_name == "pedro")
+only_f <- subset(mytraindf,mytraindf$user_name == "eurico")
+
+# Plotting x values for belt,arm,dumbbell only_e (pedro), then y , then z
+# dev.off()
+par(mfrow = c(2,3),mar=c(0,0,2,0))
+with(only_e,scatter3D(theta = 30, phi = 30, accel_dumbbell_x, accel_arm_x, accel_belt_x,col=1:5,colvar=as.numeric(only_e$classe), main="accel_* x vals, by pedro"))
+with(only_e,scatter3D(theta = 30, phi = 30, accel_dumbbell_y, accel_arm_y, accel_belt_y,col=1:5,colvar=as.numeric(only_e$classe), main="accel_* y vals, by pedro"))
+with(only_e,scatter3D(theta = 30, phi = 30, accel_dumbbell_z, accel_arm_z, accel_belt_z,col=1:5,colvar=as.numeric(only_e$classe), main="accel_* z vals, by pedro"))
+
+# only_d jeremy
+with(only_d,scatter3D(theta = 30, phi = 30, accel_dumbbell_x, accel_arm_x, accel_belt_x,col=1:5,colvar=as.numeric(only_d$classe), main="accel_* x vals, by jeremy"))
+with(only_d,scatter3D(theta = 30, phi = 30, accel_dumbbell_y, accel_arm_y, accel_belt_y,col=1:5,colvar=as.numeric(only_d$classe), main="accel_* y vals, by jeremy"))
+with(only_d,scatter3D(theta = 30, phi = 30, accel_dumbbell_z, accel_arm_z, accel_belt_z,col=1:5,colvar=as.numeric(only_d$classe), main="accel_* z vals, by jeremy"))
+
+```
+### Let us view the effects of other predictors 
+
+```{r data_exploration plot2, cache=TRUE, warning=FALSE}
+# # Check out magnet_*
+# # each user 
+
+par(mfrow = c(2,3),mar=c(0,0,2,0))
+
+with(only_e,scatter3D(theta = 30, phi = 30, magnet_dumbbell_x, magnet_arm_x, magnet_belt_x,col=1:5,colvar=as.numeric(only_e$classe), main="magnet x vals, by pedro"))
+with(only_e,scatter3D(theta = 30, phi = 30, magnet_dumbbell_y, magnet_arm_y, magnet_belt_y,col=1:5,colvar=as.numeric(only_e$classe), main="magnet y vals, by pedro"))
+with(only_e,scatter3D(theta = 30, phi = 30, magnet_dumbbell_z, magnet_arm_z, magnet_belt_z,col=1:5,colvar=as.numeric(only_e$classe), main="magnet z vals, by pedro"))
+
+with(only_c,scatter3D(theta = 30, phi = 30, magnet_dumbbell_x, magnet_arm_x, magnet_belt_x,col=1:5,colvar=as.numeric(only_c$classe), main="magnet x vals, by charles"))
+with(only_c,scatter3D(theta = 30, phi = 30, magnet_dumbbell_y, magnet_arm_y, magnet_belt_y,col=1:5,colvar=as.numeric(only_c$classe), main="magnet y vals, by charles"))
+with(only_c,scatter3D(theta = 30, phi = 30, magnet_dumbbell_z, magnet_arm_z, magnet_belt_z,col=1:5,colvar=as.numeric(only_c$classe), main="magnet z vals, by charles"))
+
+# 
+# 
+# ### My classe section. 
+# only_A <- subset(mytraindf,mytraindf$classe == "A")
+# only_B <- subset(mytraindf,mytraindf$classe == "B")
+# only_C <- subset(mytraindf,mytraindf$classe == "C")
+# only_D <- subset(mytraindf,mytraindf$classe == "D")
+# only_E <- subset(mytraindf,mytraindf$classe == "E")
+# 
+
+
+```
+
+## Preprocessing 
+
+Based on our exploration, we removed further variables which we did not find as relevant. That stage made decissions in this stage a little easier. However, we still had to make a few more tasks:
+- Select the predictors we found to be more relevant (accel_, magnet, user, classe etc )
+- Transform both our training , and test sets alike. 
+- Break our training set further into training_set 80% of our original training set, and 20% to our new test set. 
+- Find any correlations and for those above 90% , remove them. 
+- Conduct a Principle component analysis operation to build new predictors from the old ones. Note in this step we maintaned our original training sets for comparison. 
+- Perform the same transformation on all sets as we did on the training_set
+
+
+```{r data processing, echo=TRUE}
+library(caret)
+
+# Set seed for reproducibility 
+set.seed(1)
+
+# remove 1,7 , and some others based upon our exploration
+possible_columns <- names(mytraindf[grepl("accel|magnet|gyros_.*_z|user|classe",names(mytraindf))])
+final_train <- mytraindf[,possible_columns]
+final_test_pb <- mytestdf[,c(possible_columns[1:33],"problem_id")]
+# final_temp <- temp_data[,possible_columns[1:34],]
+
+
+# also do some findCorrelation
+temp <- findCorrelation(cor(final_train[,-c(1,34)]))
+# See what we got 
+names(final_train[,c(temp+1)])
+# It looks good so we will remove them
+final_train <- final_train[,-c(temp+1)]
+final_test_pb <- final_test_pb[,-c(temp+1)]
+# final_temp <- final_temp[,-c(temp+1)]
+# Now we split the data into train/test sets
+inTrain <- createDataPartition(final_train$classe,p=0.8,list=F)
+training_set <- final_train[inTrain,]
+testing_set <- final_train[-inTrain,]
+
+# run PCA on all but the factors
+final_pca_PP <- preProcess(training_set[,-c(1,31)],method="pca")
+
+# Now that we have our PCA conversion, we apply it to all our training and test sets, then add our 
+final_tr_pca <- predict(final_pca_PP,training_set[,-c(1,31)])
+final_tr_pca <- cbind(final_tr_pca,training_set[,c(1,31)])
+final_ts_pca <- predict(final_pca_PP,testing_set[,-c(1,31)])
+final_ts_pca <- cbind(final_ts_pca,testing_set[,c(1,31)])
+# These are the actual problem files 
+final_ts_pca_pb <- predict(final_pca_PP,final_test_pb[,-c(1,31)])
+final_ts_pca_pb <- cbind(final_ts_pca_pb,final_test_pb[,c(1,31)])
+
+```
+
+## Model Fitting 
+
+In this section we performed several train() operations as well as choosing our 10 k-fold Cross-validation operation. Details can be seen in the code below. 
+
+```{r model fitting, echo=TRUE, cache=TRUE}
+library(caret)
+# Let us use Cross Validation K-fold = 10
+tr_ctrl <- trainControl(method = "repeatedcv", number = 10)
+
+# Let us use boosting on our PCAs
+if (!"model_gbm_pca" %in% ls()) {
+    model_gbm_pca <- train(classe ~ . , trControl = tr_ctrl, method ="gbm",data = final_tr_pca, verbose=F)
+}
+mypred_gbm_pca <- predict(model_gbm_pca,newdata = final_ts_pca)
+table(mypred_gbm_pca,final_ts_pca$classe)
+m<- as.matrix(table(mypred_gbm_pca,final_ts_pca$classe))
+class_accuracy_gbm_pca <- sum(diag(m))/length(mypred_gbm_pca) * 100
+out_of_sample_error <- data.frame(method = "gbm_pca", accu = class_accuracy_gbm_pca)
+
+# Let us use boosting on our original subset of predictors.
+if (!"model_gbm_no_pca" %in% ls()) {
+    model_gbm_no_pca <- train(classe ~ . , trControl = tr_ctrl, method ="gbm",data = training_set,verbose=F)
+}
+mypred_gbm_no_pca <- predict(model_gbm_no_pca,newdata = testing_set)
+table(mypred_gbm_no_pca,testing_set$classe)
+m<- as.matrix(table(mypred_gbm_no_pca,testing_set$classe))
+class_accuracy_gbm_no_pca <- sum(diag(m))/length(mypred_gbm_no_pca) * 100
+out_of_sample_error <- rbind(out_of_sample_error,data.frame(method = "gbm_no_pca", accu = class_accuracy_gbm_no_pca))
+
+# Now try Random Forest on PCAs
+if (!"model_rf_pca" %in% ls()) {
+    model_rf_pca <- train(classe ~ . , trControl = tr_ctrl, method ="rf",data = final_tr_pca) 
+}
+mypred_rf_pca <- predict(model_rf_pca,newdata = final_ts_pca) 
+table(mypred_rf_pca,final_ts_pca$classe)
+m<- as.matrix(table(mypred_rf_pca,final_ts_pca$classe))
+class_accuracy_rf_pca <- sum(diag(m))/length(mypred_rf_pca) * 100
+out_of_sample_error <- rbind(out_of_sample_error,data.frame(method = "rf_pca", accu = class_accuracy_rf_pca))
+# Random Forest without on original predictor subset
+if (!"model_rf" %in% ls()) {
+    model_rf <- train(classe ~ . , trControl = tr_ctrl, method ="rf",data = training_set)
+}
+mypred_rf_no_pca <- predict(model_rf,newdata = testing_set)
+table(mypred_rf_no_pca,testing_set$classe)
+m<- as.matrix(table(mypred_rf_no_pca,testing_set$classe))
+class_accuracy_rf_no_pca <- sum(diag(m))/length(mypred_rf_no_pca) * 100
+out_of_sample_error <- rbind(out_of_sample_error,data.frame(method = "rf_no_pca", accu = class_accuracy_rf_no_pca))
+out_of_sample_error$accu <- round(out_of_sample_error$accu,2)
+out_of_sample_error[with(out_of_sample_error, order(-accu)),]
+best_accu <- max(out_of_sample_error$accu)
+```
+
+# Conclusion
+
+We built 4 models using two main prediction algorithms (boosting and randomForest). Each algorithm was applied on a different set of predictors, ones which we selected based upon our thorough exploration, while the others through using Principle Component Analysis. We then compared our out of sample errors in the tables shown above, and found a sample error rate for our Random Forest and hand picked predictors to be `r best_accu `. 
+
+
+```{r submit answers, echo=FALSE, eval=FALSE}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+myanswers <- predict(model_rf,newdata = final_test_pb)
+pml_write_files(myanswers)
+
+```
+
