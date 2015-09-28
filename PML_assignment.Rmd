@@ -8,7 +8,7 @@ output: html_document
 # Synopsis
 In this assignment we aimed to fit a predictive model onto a sample set of data (train it) which was captured by 'Groupware\@LES'. That data and associated information can be found [here](http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises). We used the {caret} package to build our models as well as preprocess and cross-validate them. 
 
-After splitting our data into two sets (train and test), we were able to select a good model for predicting the class of activity performed. With an out of sample error rate of `r best_accu`. 
+After splitting our data into two sets (train and test), we were able to select a good model for predicting the class of activity performed. With an out of sample error rate of `r oose`. 
 
 ## General Strategy
 
@@ -250,11 +250,13 @@ Below we can see the out of sample error comparisons amongst the 4 models fitted
 ```{r}
 out_of_sample_error$accu <- round(out_of_sample_error$accu,2)
 out_of_sample_error[with(out_of_sample_error, order(-accu)),]
+out_of_sample_error$OoSE <- 100 - out_of_sample_error$accu
 best_accu <- max(out_of_sample_error$accu)
+oose <- min(out_of_sample_error$OoSE)
 ```
 
 # Conclusion
 
-We built 4 models using two main prediction algorithms (boosting and randomForest). Each algorithm was applied on a different set of predictors, ones which we selected based upon our thorough exploration, while the others through using Principle Component Analysis. We then compared our out of sample errors in the tables shown above, and found a sample error rate for our Random Forest and hand picked predictors to be `r best_accu `. 
+We built 4 models using two main prediction algorithms (boosting and randomForest). Each algorithm was applied on a different set of predictors, ones which we selected based upon our thorough exploration, while the others through using Principle Component Analysis. We then compared our out of sample errors in the tables shown above, and found a sample error rate for our Random Forest and hand picked predictors to be `r oose`. 
 
 

@@ -71,7 +71,7 @@ img {
 <div id="synopsis" class="section level1">
 <h1>Synopsis</h1>
 <p>In this assignment we aimed to fit a predictive model onto a sample set of data (train it) which was captured by ‘Groupware@LES’. That data and associated information can be found <a href="http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises">here</a>. We used the {caret} package to build our models as well as preprocess and cross-validate them.</p>
-<p>After splitting our data into two sets (train and test), we were able to select a good model for predicting the class of activity performed. With an out of sample error rate of 99.51.</p>
+<p>After splitting our data into two sets (train and test), we were able to select a good model for predicting the class of activity performed. With an out of sample error rate of 0.49.</p>
 <div id="general-strategy" class="section level2">
 <h2>General Strategy</h2>
 <p>Our general strategy was a list of steps:</p>
@@ -247,11 +247,13 @@ out_of_sample_error[with(out_of_sample_error, order(-accu)),]</code></pre>
 ## 3     rf_pca 93.57
 ## 2 gbm_no_pca 91.56
 ## 1    gbm_pca 76.72</code></pre>
-<pre class="r"><code>best_accu &lt;- max(out_of_sample_error$accu)</code></pre>
+<pre class="r"><code>out_of_sample_error$OoSE &lt;- 100 - out_of_sample_error$accu
+best_accu &lt;- max(out_of_sample_error$accu)
+oose &lt;- min(out_of_sample_error$OoSE)</code></pre>
 </div>
 <div id="conclusion" class="section level1">
 <h1>Conclusion</h1>
-<p>We built 4 models using two main prediction algorithms (boosting and randomForest). Each algorithm was applied on a different set of predictors, ones which we selected based upon our thorough exploration, while the others through using Principle Component Analysis. We then compared our out of sample errors in the tables shown above, and found a sample error rate for our Random Forest and hand picked predictors to be 99.51.</p>
+<p>We built 4 models using two main prediction algorithms (boosting and randomForest). Each algorithm was applied on a different set of predictors, ones which we selected based upon our thorough exploration, while the others through using Principle Component Analysis. We then compared our out of sample errors in the tables shown above, and found a sample error rate for our Random Forest and hand picked predictors to be 0.49.</p>
 </div>
 
 
