@@ -241,14 +241,14 @@ out_of_sample_error[with(out_of_sample_error, order(-accu)),]</code></pre>
 <h1>Out of sample error</h1>
 <p>Below we can see the out of sample error comparisons amongst the 4 models fitted.</p>
 <pre class="r"><code>out_of_sample_error$accu &lt;- round(out_of_sample_error$accu,2)
+out_of_sample_error$OoSE &lt;- 100 - out_of_sample_error$accu
 out_of_sample_error[with(out_of_sample_error, order(-accu)),]</code></pre>
-<pre><code>##       method  accu
-## 4  rf_no_pca 99.51
-## 3     rf_pca 93.57
-## 2 gbm_no_pca 91.56
-## 1    gbm_pca 76.72</code></pre>
-<pre class="r"><code>out_of_sample_error$OoSE &lt;- 100 - out_of_sample_error$accu
-best_accu &lt;- max(out_of_sample_error$accu)
+<pre><code>##       method  accu  OoSE
+## 4  rf_no_pca 99.51  0.49
+## 3     rf_pca 93.57  6.43
+## 2 gbm_no_pca 91.56  8.44
+## 1    gbm_pca 76.72 23.28</code></pre>
+<pre class="r"><code>best_accu &lt;- max(out_of_sample_error$accu)
 oose &lt;- min(out_of_sample_error$OoSE)</code></pre>
 </div>
 <div id="conclusion" class="section level1">
