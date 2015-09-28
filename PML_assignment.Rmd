@@ -249,8 +249,8 @@ Below we can see the out of sample error comparisons amongst the 4 models fitted
 
 ```{r}
 out_of_sample_error$accu <- round(out_of_sample_error$accu,2)
-out_of_sample_error[with(out_of_sample_error, order(-accu)),]
 out_of_sample_error$OoSE <- 100 - out_of_sample_error$accu
+out_of_sample_error[with(out_of_sample_error, order(-accu)),]
 best_accu <- max(out_of_sample_error$accu)
 oose <- min(out_of_sample_error$OoSE)
 ```
